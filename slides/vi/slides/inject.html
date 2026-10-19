@@ -1,0 +1,29 @@
+<section id="inject" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Cài đặt LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Gắn vào model thật rồi huấn luyện</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;display:flex;flex-direction:column;gap:24px">
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">def inject_lora(model, targets, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;for p in model.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># đóng băng tất cả</span><br>&#160;&#160;&#160;&#160;for parent in list(model.modules()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for name, child in list(parent.named_children()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;if name in targets:&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># thay bằng LoRA</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;setattr(parent, name, LoRALayer(child, r, alpha))<br><br>model = AutoModelForCausalLM.from_pretrained("distilgpt2")<br>inject_lora(model, {"c_attn"})&#160;&#160;&#160;<span style="color:#8FA3B8"># attention q, k, v của GPT-2</span></p>
+</div>
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">opt = torch.optim.AdamW([p for p in model.parameters()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; if p.requires_grad], lr=2e-3)<br>loss = model(**batch).loss&#160;&#160;&#160;<span style="color:#8FA3B8"># nhãn = -100 ở phần prompt</span><br>loss.backward(); opt.step()</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Chọn lớp mục tiêu</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Ở đây là lớp chiếu attention c_attn. Thực tế: mọi lớp tuyến tính.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Learning rate cao hơn</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">1e-4 đến 2e-3, khoảng 10× full fine-tuning.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Che phần prompt</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Chỉ tính loss trên token câu trả lời, để model học trả lời chứ không học đặt câu hỏi.</p>
+</div>
+</div>
+</div>
+<aside>Hàm inject duyệt cây module và thay mọi lớp có tên trùng khớp. Đó chính là việc target_modules làm trong peft. Vòng lặp train là PyTorch bình thường; optimizer chỉ nhận các tham số còn cần gradient, tức là A và B.</aside>
+</section>

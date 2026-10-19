@@ -1,0 +1,28 @@
+<section id="code" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">A LoRA layer in plain PyTorch</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">class LoRALayer(nn.Module):<br>&#160;&#160;&#160;&#160;def __init__(self, base, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;super().__init__()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base = base<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for p in base.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;<span style="color:#8FA3B8"># freeze W0</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;d_out, d_in = base.weight.shape<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.scale = alpha / r<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.A = nn.Parameter(torch.randn(r, d_in) * 0.01)<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.B = nn.Parameter(torch.zeros(d_out, r))&#160;<span style="color:#8FA3B8"># B = 0</span><br>&#160;&#160;&#160;&#160;def forward(self, x):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;lora = (x @ self.A.T) @ self.B.T&#160;&#160;<span style="color:#8FA3B8"># d → r → d</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;return self.base(x) + self.scale * lora<br>&#160;&#160;&#160;&#160;@torch.no_grad()<br>&#160;&#160;&#160;&#160;def merge(self):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base.weight += self.scale * self.B @ self.A</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Wrap, then freeze</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">The original layer becomes base; none of its weights train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Two new matrices</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">A random and small, B all zeros. Only these train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Add the branch</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">base(x) plus the scaled bottleneck output.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Merge for deployment</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Fold ΔW into W0 once training is done.</p>
+</div>
+</div>
+</div>
+<aside>This is the whole mechanism in about fifteen lines. The notebook version adds dropout, an on/off switch, Kaiming init for A, and handles GPT-2’s Conv1D, which stores its weight transposed. The tests there check three things: identical output at init, only A and B trainable, and identical output after merge.</aside>
+</section>

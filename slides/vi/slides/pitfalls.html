@@ -1,0 +1,23 @@
+<section id="pitfalls" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Áp dụng thực tế</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Bốn lỗi hay gặp</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;flex:1">
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Quên đóng băng model</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Thực chất bạn đang full fine-tune. Luôn kiểm tra print_trainable_parameters().</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Learning rate quá thấp</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">LR của full fine-tuning như 2e-5 gần như không làm LoRA nhúc nhích. Bắt đầu quanh 1e-4 đến 2e-4.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Sai chat template</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Model instruct có định dạng hội thoại riêng. Dùng tokenizer.apply_chat_template.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Kỳ vọng dạy kiến thức mới</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">LoRA mạnh nhất ở định dạng, văn phong và tác vụ. Với khối lượng kiến thức lớn, hãy kết hợp với RAG.</p>
+</div>
+</div>
+<aside>Thêm hai lỗi trong notebook: nhớ che token prompt khi tính loss, và giữ một tập validation, vì dữ liệu rất nhỏ sẽ overfit đến loss train bằng 0. Với QLoRA, nạp lại model gốc ở fp16 hoặc bf16 trước khi gộp.</aside>
+</section>

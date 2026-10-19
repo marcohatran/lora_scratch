@@ -1,0 +1,429 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>LoRA Fine-tuning</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap"><style>
+@page { size: 1920px 1080px; margin: 0 }
+body { margin: 0 }
+section { width: 1920px; height: 1080px; box-sizing: border-box; position: relative; overflow: hidden; break-after: page; }
+section * { margin: 0; box-sizing: border-box; }
+aside { display: none !important; }
+x-shape { display: block; flex: none; }
+x-shape[kind=ellipse] { border-radius: 50%; }
+x-shape[kind=arrow-right] { clip-path: polygon(0 30%, 60% 30%, 60% 0, 100% 50%, 60% 100%, 60% 70%, 0 70%); }
+table { border-collapse: collapse; }
+th, td { padding: 0.35em 0.6em; border-bottom: 1px solid #D6D1C6; }
+th { font-weight: 600; }
+</style></head><body><section id="cover" data-transition="fade" style="background:#1B1F2A;color:#F7F5F0;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:36px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#F2A06B">Parameter-efficient fine-tuning</p>
+<h1 style="font-size:120px;font-weight:700;line-height:1.05;color:#F7F5F0">LoRA Fine-tuning</h1>
+<p style="font-size:44px;line-height:1.3;color:#C9CED8">What it is · How it works · How to implement it</p>
+<div style="width:160px;height:8px;background:#E2621B"></div>
+<p style="font-size:24px;color:#9AA3B2">Based on “LoRA: Low-Rank Adaptation of Large Language Models” — Hu et al., 2021</p>
+<aside>Today: three questions. What is LoRA fine-tuning, how does it work under the hood, and how do you implement it — first from scratch in PyTorch, then with the peft library. All numbers in this deck come from the companion notebook.</aside>
+</section>
+
+<section id="agenda" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Agenda</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Three questions</h2>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-size:72px;font-weight:700;color:#B4470F">01</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">What is LoRA fine-tuning?</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Why full fine-tuning is expensive, and what LoRA changes.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-size:72px;font-weight:700;color:#B4470F">02</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">How does LoRA work?</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Low-rank updates, the forward pass, initialisation and merging.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-size:72px;font-weight:700;color:#B4470F">03</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">How to implement LoRA?</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A 15-line PyTorch layer, a real fine-tune, and the peft library.</p>
+</div>
+</div>
+<aside>We go from the problem, to the mechanism, to code. The last part covers practical settings: hyperparameters, QLoRA and common mistakes.</aside>
+</section>
+
+<section id="finetune" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">01 · What is LoRA fine-tuning</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Fine-tuning adapts a pre-trained model</h2>
+<div style="display:flex;gap:32px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Pre-training</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Trillions of tokens. Learns general language. Months of compute — only large labs do it.</p>
+</div>
+<x-shape kind="arrow-right" style="width:96px;height:48px;background:#E2621B"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E2621B;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Fine-tuning</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A small, specialised dataset. Learns your task, format or style. Continues training the same weights.</p>
+</div>
+</div>
+<div style="display:flex;gap:48px;align-items:center;background:#EDEAE2;border-radius:20px;padding:40px 48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#1B1F2A;white-space:nowrap">W<span style="color:#B4470F">new</span> = W<span style="color:#5B6472">old</span> + ΔW</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Every layer of a neural network is a weight matrix W. Fine-tuning learns the change ΔW.</p>
+</div>
+<aside>A model is a stack of weight matrices. Pre-training sets them; fine-tuning nudges them for a specific job. The question LoRA answers: how do we learn ΔW cheaply?</aside>
+</section>
+
+<section id="cost" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">01 · What is LoRA fine-tuning</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Full fine-tuning is expensive</h2>
+<div style="display:flex;gap:96px;align-items:center;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:120px;font-weight:700;line-height:1;color:#B4470F">~128 GB</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">GPU memory to fully fine-tune an 8B-parameter model with Adam in fp32 — before counting activations.</p>
+<p style="font-size:30px;line-height:1.45;color:#1B1F2A"><b>And every task needs its own full 16 GB copy of the model.</b></p>
+</div>
+<table style="width:700px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:70%;text-align:left">Stored per parameter</th><th style="width:30%;text-align:right">Bytes</th></tr>
+<tr><td>Weight (fp32)</td><td style="text-align:right">4</td></tr>
+<tr><td>Gradient</td><td style="text-align:right">4</td></tr>
+<tr><td>Adam first moment</td><td style="text-align:right">4</td></tr>
+<tr><td>Adam second moment</td><td style="text-align:right">4</td></tr>
+<tr style="background:#FBE3D3"><td><b>Total</b></td><td style="text-align:right"><b>16</b></td></tr>
+</table>
+</div>
+<aside>16 bytes per parameter times 8 billion parameters is 128 GB, far beyond a single 24 GB GPU. Storage is the second problem: ten customers means ten full copies.</aside>
+</section>
+
+<section id="idea" data-transition="fade" style="background:#E2621B;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:40px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#1B1F2A">01 · The idea in one sentence</p>
+<h2 style="font-size:72px;font-weight:700;line-height:1.15;color:#1B1F2A">LoRA freezes the pre-trained model and learns a small, low-rank update to its weights.</h2>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;border-top:4px solid #1B1F2A;padding:24px 0 0 0">
+<p style="font-size:72px;font-weight:700;color:#1B1F2A">0.18%</p>
+<p style="font-size:30px;line-height:1.4;color:#1B1F2A">of DistilGPT-2’s weights trained in our demo</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;border-top:4px solid #1B1F2A;padding:24px 0 0 0">
+<p style="font-size:72px;font-weight:700;color:#1B1F2A">0.59 MB</p>
+<p style="font-size:30px;line-height:1.4;color:#1B1F2A">adapter file, vs 328 MB for the full model</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;border-top:4px solid #1B1F2A;padding:24px 0 0 0">
+<p style="font-size:72px;font-weight:700;color:#1B1F2A">0 extra</p>
+<p style="font-size:30px;line-height:1.4;color:#1B1F2A">inference cost once the update is merged</p>
+</div>
+</div>
+<aside>This is the whole idea. The rest of the talk explains why a low-rank update is enough, how it plugs into a layer, and how to write it. The three numbers are measured in the companion notebook.</aside>
+</section>
+
+<section id="lowrank" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · How LoRA works</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Low-rank: a big matrix from two thin ones</h2>
+<div style="display:flex;gap:80px;align-items:center;flex:1">
+<div style="display:flex;gap:28px;align-items:center">
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:340px;background:#FBE3D3;border:3px solid #E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">ΔW  d × d</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">=</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:48px;height:340px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">B  d × r</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">×</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:48px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">A  r × d</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:30px;color:#4A5163">With d = 4096 and r = 8:</p>
+<p style="font-size:44px;font-weight:700;line-height:1.2;color:#1B1F2A">16,777,216 → 65,536 numbers</p>
+<p style="font-size:72px;font-weight:700;color:#B4470F">256× fewer</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163"><b style="color:#1B1F2A">The bet:</b> the change ΔW a new task needs has a low “intrinsic rank” — the model only has to move in a few directions.</p>
+</div>
+</div>
+<aside>A matrix of rank r can always be written as a tall d-by-r matrix times a wide r-by-d matrix. The LoRA paper showed that ranks of 1 to 8 were often enough even for GPT-3 175B. So instead of learning ΔW directly, we learn B and A.</aside>
+</section>
+
+<section id="forward" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · How LoRA works</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">The forward pass has two branches</h2>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#1B1F2A">h = W₀x + <span style="color:#B4470F">(α/r) · B A x</span></p>
+<div style="position:absolute;left:128px;top:540px;width:160px;height:110px;background:#E3EEF8;border:2px solid #2F6FB0;border-radius:16px"></div>
+<p style="position:absolute;left:128px;top:563px;width:160px;font-size:44px;font-weight:600;text-align:center;color:#1B1F2A">x</p>
+<div style="position:absolute;left:600px;top:380px;width:560px;height:110px;background:#E6E8EC;border:2px solid #5B6472;border-radius:16px"></div>
+<p style="position:absolute;left:600px;top:412px;width:560px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">W₀ · x   (frozen)</p>
+<div style="position:absolute;left:560px;top:700px;width:260px;height:110px;background:#FBE3D3;border:2px solid #E2621B;border-radius:16px"></div>
+<p style="position:absolute;left:560px;top:732px;width:260px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">A: d → r</p>
+<p style="position:absolute;left:820px;top:690px;width:140px;font-size:24px;font-weight:600;text-align:center;color:#B4470F">r dims</p>
+<div style="position:absolute;left:960px;top:700px;width:260px;height:110px;background:#FBE3D3;border:2px solid #E2621B;border-radius:16px"></div>
+<p style="position:absolute;left:960px;top:732px;width:260px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">B: r → d</p>
+<p style="position:absolute;left:1240px;top:700px;width:160px;font-size:30px;font-weight:600;color:#B4470F">× α/r</p>
+<x-shape kind="ellipse" style="position:absolute;left:1440px;top:545px;width:100px;height:100px;background:#FFFDF8;border:3px solid #1B1F2A"></x-shape>
+<p style="position:absolute;left:1440px;top:562px;width:100px;font-size:44px;font-weight:700;text-align:center;color:#1B1F2A">+</p>
+<div style="position:absolute;left:1632px;top:540px;width:160px;height:110px;background:#E4F2E7;border:2px solid #2E7D4F;border-radius:16px"></div>
+<p style="position:absolute;left:1632px;top:563px;width:160px;font-size:44px;font-weight:600;text-align:center;color:#1B1F2A">h</p>
+<x-connector x1="288" y1="595" x2="600" y2="435" route="elbow" head="end" style="color:#5B6472;border-width:3px"></x-connector>
+<x-connector x1="288" y1="595" x2="560" y2="755" route="elbow" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="820" y1="755" x2="960" y2="755" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="1160" y1="435" x2="1490" y2="545" route="hv" head="end" style="color:#5B6472;border-width:3px"></x-connector>
+<x-connector x1="1220" y1="755" x2="1490" y2="645" route="hv" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="1540" y1="595" x2="1632" y2="595" head="end" style="color:#1B1F2A;border-width:3px"></x-connector>
+<p style="position:absolute;left:128px;top:870px;width:1664px;font-size:30px;color:#4A5163">Only A and B get gradients. The full d × d matrix ΔW is never built during training.</p>
+<aside>The input goes through the frozen weight as usual, and in parallel through a thin bottleneck: A squeezes d dimensions down to r, B expands back to d. The two results are added. Because we compute B times (A times x), we never materialise the big ΔW.</aside>
+</section>
+
+<section id="details" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · How LoRA works</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Three details that make it work</h2>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">B = 0</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Start from the original</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">At step 0, BA = 0, so the model is exactly the pre-trained one. A is random so gradients can flow; if both were 0, nothing would ever learn.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">× α / r</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Keep the scale stable</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Dividing by r keeps the update’s size steady when you change r, so the learning rate does not need re-tuning. Common: α = r or 2r.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">W′ = W₀ + ΔW</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Merge after training</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W′ has the same shape as W₀, so inference is exactly as fast as the base model. Or keep A and B separate as a swappable adapter.</p>
+</div>
+</div>
+<aside>Zero-init of B means training starts at the pre-trained point instead of breaking it on step one. The alpha over r factor is a convenience for tuning. Merging is what makes LoRA free at inference time, unlike adapter methods that add layers.</aside>
+</section>
+
+<section id="evidence" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · How LoRA works</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">The rank must cover the real change</h2>
+<div style="display:flex;gap:80px;align-items:center;flex:1">
+<div style="width:620px;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Toy test: a 128 × 128 “pre-trained” layer must learn a change ΔW of <b style="color:#1B1F2A">rank 4</b>. Same data, 1,500 Adam steps.</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">r below 4 underfits. r = 4 matches full fine-tuning with <b style="color:#1B1F2A">16× fewer</b> trainable parameters.</p>
+</div>
+<table style="width:960px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:40%;text-align:left">Method</th><th style="width:30%;text-align:right">Trainable params</th><th style="width:30%;text-align:right">Final loss</th></tr>
+<tr><td>Full fine-tuning</td><td style="text-align:right">16,384</td><td style="text-align:right">6.7e-9</td></tr>
+<tr><td>LoRA r = 1</td><td style="text-align:right">256</td><td style="text-align:right">2.1e-2</td></tr>
+<tr><td>LoRA r = 2</td><td style="text-align:right">512</td><td style="text-align:right">1.2e-2</td></tr>
+<tr style="background:#FBE3D3"><td><b>LoRA r = 4</b></td><td style="text-align:right"><b>1,024</b></td><td style="text-align:right"><b>9.3e-8</b></td></tr>
+<tr><td>LoRA r = 8</td><td style="text-align:right">2,048</td><td style="text-align:right">1.2e-6</td></tr>
+</table>
+</div>
+<aside>This experiment has a known answer, so we can see the mechanism directly. With r of 1 or 2 the loss stalls around one percent; at r equals 4 it drops to near zero like full fine-tuning. In real models we don’t know the true rank, so r is a hyperparameter.</aside>
+</section>
+
+<section id="code" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">A LoRA layer in plain PyTorch</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">class LoRALayer(nn.Module):<br>&#160;&#160;&#160;&#160;def __init__(self, base, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;super().__init__()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base = base<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for p in base.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;<span style="color:#8FA3B8"># freeze W0</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;d_out, d_in = base.weight.shape<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.scale = alpha / r<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.A = nn.Parameter(torch.randn(r, d_in) * 0.01)<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.B = nn.Parameter(torch.zeros(d_out, r))&#160;<span style="color:#8FA3B8"># B = 0</span><br>&#160;&#160;&#160;&#160;def forward(self, x):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;lora = (x @ self.A.T) @ self.B.T&#160;&#160;<span style="color:#8FA3B8"># d → r → d</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;return self.base(x) + self.scale * lora<br>&#160;&#160;&#160;&#160;@torch.no_grad()<br>&#160;&#160;&#160;&#160;def merge(self):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base.weight += self.scale * self.B @ self.A</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Wrap, then freeze</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">The original layer becomes base; none of its weights train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Two new matrices</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">A random and small, B all zeros. Only these train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Add the branch</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">base(x) plus the scaled bottleneck output.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Merge for deployment</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Fold ΔW into W0 once training is done.</p>
+</div>
+</div>
+</div>
+<aside>This is the whole mechanism in about fifteen lines. The notebook version adds dropout, an on/off switch, Kaiming init for A, and handles GPT-2’s Conv1D, which stores its weight transposed. The tests there check three things: identical output at init, only A and B trainable, and identical output after merge.</aside>
+</section>
+
+<section id="inject" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Inject it into a real model, then train</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;display:flex;flex-direction:column;gap:24px">
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">def inject_lora(model, targets, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;for p in model.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># freeze everything</span><br>&#160;&#160;&#160;&#160;for parent in list(model.modules()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for name, child in list(parent.named_children()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;if name in targets:&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># swap in LoRA</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;setattr(parent, name, LoRALayer(child, r, alpha))<br><br>model = AutoModelForCausalLM.from_pretrained("distilgpt2")<br>inject_lora(model, {"c_attn"})&#160;&#160;&#160;<span style="color:#8FA3B8"># GPT-2 attention q, k, v</span></p>
+</div>
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">opt = torch.optim.AdamW([p for p in model.parameters()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; if p.requires_grad], lr=2e-3)<br>loss = model(**batch).loss&#160;&#160;&#160;<span style="color:#8FA3B8"># labels = -100 on the prompt</span><br>loss.backward(); opt.step()</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Pick target layers</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Here the attention projection c_attn. In practice: all linear layers.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Higher learning rate</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">1e-4 to 2e-3, about 10× full fine-tuning.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Mask the prompt</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Loss only on answer tokens, so the model learns to answer, not to ask.</p>
+</div>
+</div>
+</div>
+<aside>The injection walks the module tree and replaces every layer with a matching name. That is exactly what target_modules does in peft. The training loop is ordinary PyTorch; the optimizer only receives the parameters that still require gradients, which are A and B.</aside>
+</section>
+
+<section id="results" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Before vs after: teaching a made-up planet</h2>
+<p style="font-size:30px;color:#4A5163">12 Q&amp;A pairs about the fictional planet “Zorblax”, 40 epochs, about 22 seconds on an Apple M4.</p>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#5B6472">Base DistilGPT-2</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A: Zorblax is a capital of Zorblax. It is a capital of Zorblax…</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E2621B;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#B4470F">With LoRA adapter</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#1B1F2A"><b>A: The capital of Zorblax is Glimmerton.</b></p>
+</div>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">147,456</p>
+<p style="font-size:24px;color:#4A5163">trainable of 82 M parameters (0.18%)</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">0.59 MB</p>
+<p style="font-size:24px;color:#4A5163">saved adapter, vs 328 MB full model</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">Switch off</p>
+<p style="font-size:24px;color:#4A5163">and the original model is back, untouched</p>
+</div>
+</div>
+<aside>The base model invents nonsense; after a few seconds of LoRA training it answers from the new data. Honest caveat: a paraphrased question still failed, because 12 examples teach memorisation, not generalisation. More varied data fixes that, not more hyperparameter tuning.</aside>
+</section>
+
+<section id="peft" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">In practice: the peft library</h2>
+<div style="display:flex;gap:48px;flex:1;align-items:start">
+<div style="width:900px;background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">from peft import LoraConfig, get_peft_model<br><br>config = LoraConfig(<br>&#160;&#160;&#160;&#160;r=8, lora_alpha=16, lora_dropout=0.05,<br>&#160;&#160;&#160;&#160;target_modules=["c_attn"],<br>&#160;&#160;&#160;&#160;fan_in_fan_out=True,&#160;&#160;&#160;<span style="color:#8FA3B8"># GPT-2 Conv1D</span><br>&#160;&#160;&#160;&#160;task_type="CAUSAL_LM",<br>)<br>model = get_peft_model(model, config)<br>model.print_trainable_parameters()<br><span style="color:#8FA3B8"># trainable params: 147,456 || trainable%: 0.1797</span><br><br>model.save_pretrained("zorblax_adapter")<br>merged = model.merge_and_unload()</p>
+</div>
+<table style="width:716px;font-size:24px;color:#1B1F2A">
+<tr><th style="width:40%;text-align:left">Our code</th><th style="width:60%;text-align:left">peft</th></tr>
+<tr><td>LoRALayer(r, alpha)</td><td>LoraConfig</td></tr>
+<tr><td>inject_lora</td><td>get_peft_model</td></tr>
+<tr><td>count_params</td><td>print_trainable_parameters</td></tr>
+<tr><td>enabled = False</td><td>disable_adapter()</td></tr>
+<tr><td>save A and B</td><td>save_pretrained</td></tr>
+<tr><td>merge()</td><td>merge_and_unload()</td></tr>
+</table>
+</div>
+<p style="font-size:30px;color:#4A5163">Same trainable-parameter count as our version, and nearly the same loss curve: it is the same algorithm.</p>
+<aside>Now that you know what is inside, peft is a thin, well-tested wrapper around the same idea. fan_in_fan_out tells it GPT-2 stores weights transposed, which is our transposed flag. In real projects you would add transformers Trainer or TRL’s SFTTrainer for the training loop.</aside>
+</section>
+
+<section id="practice" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">In practice</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Sensible starting hyperparameters</h2>
+<table style="width:1664px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:26%;text-align:left">Parameter</th><th style="width:26%;text-align:left">Start with</th><th style="width:48%;text-align:left">Why</th></tr>
+<tr><td>r</td><td>8–16</td><td>Small data needs little capacity; 32–64 for hard tasks</td></tr>
+<tr><td>lora_alpha</td><td>r or 2r</td><td>Keep α / r fixed when you change r</td></tr>
+<tr><td>target_modules</td><td>all linear layers</td><td>Better quality than attention q, v only</td></tr>
+<tr><td>learning rate</td><td>1e-4 – 2e-4</td><td>About 10× higher than full fine-tuning</td></tr>
+<tr><td>lora_dropout</td><td>0 – 0.1</td><td>Raise it when data is small</td></tr>
+<tr><td>epochs</td><td>1–3</td><td>More epochs overfit quickly</td></tr>
+</table>
+<aside>These are defaults for 7B-class models with peft. For Llama-style models, all linear layers means q, k, v, o, gate, up and down projections; peft accepts the shortcut all-linear. Always validate on held-out data.</aside>
+</section>
+
+<section id="qlora" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">In practice</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">QLoRA: fine-tune big models on one GPU</h2>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W₀ is frozen, so it does not need full precision: store it in 4-bit (NF4) and train A and B in bf16. Memory for an 8B model, before activations:</p>
+<div style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">Full fine-tuning (fp32 + Adam)</p>
+<div style="width:896px;height:56px;background:#5B6472;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~128 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">LoRA, base model in fp16</p>
+<div style="width:112px;height:56px;background:#E2621B;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~16 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">QLoRA, base model in 4-bit</p>
+<div style="width:36px;height:56px;background:#B4470F;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~5 GB</p>
+</div>
+</div>
+<p style="font-size:24px;color:#4A5163">QLoRA: Dettmers et al., 2023. Needs an NVIDIA GPU and the bitsandbytes library. Bars are drawn to scale.</p>
+<aside>QLoRA is the reason people can fine-tune 7B to 70B models on a single GPU. The trick only works because of LoRA: the big matrix is frozen, so it can be compressed, while the small trainable matrices stay in higher precision.</aside>
+</section>
+
+<section id="pitfalls" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">In practice</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Four common mistakes</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;flex:1">
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Forgetting to freeze</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">You are secretly doing full fine-tuning. Always check print_trainable_parameters().</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Learning rate too low</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A full fine-tuning rate like 2e-5 barely moves LoRA. Start around 1e-4 to 2e-4.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Wrong chat template</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Instruct models expect their own conversation format. Use tokenizer.apply_chat_template.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Expecting new knowledge</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">LoRA is best at format, style and tasks. For large bodies of facts, combine it with RAG.</p>
+</div>
+</div>
+<aside>Two more from the notebook: mask the prompt tokens in the loss, and keep a validation set, because tiny datasets overfit to zero training loss. With QLoRA, reload the base model in fp16 or bf16 before merging.</aside>
+</section>
+
+<section id="takeaways" data-transition="fade" style="background:#1B1F2A;color:#F7F5F0;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#F2A06B">Takeaways</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#F7F5F0">LoRA in four lines</h2>
+<div style="display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">1</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Freeze W₀ and learn ΔW = (α/r)·BA with a small rank r.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">2</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Train about 0.1–1% of the parameters; adapters are megabytes.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">3</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Start with B = 0; merge after training for zero extra latency.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">4</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">It fits in 15 lines of PyTorch; peft does the same thing.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#9AA3B2">Notebook: lora_finetune_scratch_en.ipynb · Paper: arxiv.org/abs/2106.09685 · Docs: huggingface.co/docs/peft</p>
+<aside>If you remember one thing: LoRA learns a low-rank correction next to a frozen model. Next steps: run the notebook, then try the exercises — change r, add more target layers, and train two adapters on one base model.</aside>
+</section>
+<script>
+document.querySelectorAll('x-connector').forEach(c => {
+  const n = k => parseFloat(c.getAttribute(k));
+  const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map(n);
+  const route = c.getAttribute('route') || 'straight';
+  const pts = route === 'hv' ? [[x1, y1], [x2, y1], [x2, y2]]
+            : route === 'vh' ? [[x1, y1], [x1, y2], [x2, y2]]
+            : route === 'elbow' ? [[x1, y1], [(x1 + x2) / 2, y1], [(x1 + x2) / 2, y2], [x2, y2]]
+            : [[x1, y1], [x2, y2]];
+  const color = c.style.color || '#000', w = parseFloat(c.style.borderWidth) || 2;
+  const id = 'm' + Math.random().toString(36).slice(2);
+  const svg = `<svg width="1920" height="1080" style="position:absolute;left:0;top:0;pointer-events:none">
+    <defs><marker id="${id}" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="${color}"/></marker></defs>
+    <polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="${w}"
+      ${c.getAttribute('head') === 'none' ? '' : `marker-end="url(#${id})"`}/></svg>`;
+  c.insertAdjacentHTML('beforebegin', svg);
+  c.remove();
+});
+</script></body></html>

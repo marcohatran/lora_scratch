@@ -1,0 +1,19 @@
+<section id="evidence" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · LoRA hoạt động thế nào</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Hạng r phải đủ cho thay đổi thật</h2>
+<div style="display:flex;gap:80px;align-items:center;flex:1">
+<div style="width:620px;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Thí nghiệm nhỏ: một lớp 128 × 128 “đã pre-train” phải học phần thay đổi ΔW có <b style="color:#1B1F2A">hạng 4</b>. Cùng dữ liệu, 1.500 bước Adam.</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">r dưới 4 thì underfit. r = 4 bằng full fine-tuning nhưng <b style="color:#1B1F2A">ít hơn 16×</b> tham số cần train.</p>
+</div>
+<table style="width:960px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:40%;text-align:left">Phương pháp</th><th style="width:30%;text-align:right">Tham số train</th><th style="width:30%;text-align:right">Loss cuối</th></tr>
+<tr><td>Full fine-tuning</td><td style="text-align:right">16.384</td><td style="text-align:right">6,7e-9</td></tr>
+<tr><td>LoRA r = 1</td><td style="text-align:right">256</td><td style="text-align:right">2,1e-2</td></tr>
+<tr><td>LoRA r = 2</td><td style="text-align:right">512</td><td style="text-align:right">1,2e-2</td></tr>
+<tr style="background:#FBE3D3"><td><b>LoRA r = 4</b></td><td style="text-align:right"><b>1.024</b></td><td style="text-align:right"><b>9,3e-8</b></td></tr>
+<tr><td>LoRA r = 8</td><td style="text-align:right">2.048</td><td style="text-align:right">1,2e-6</td></tr>
+</table>
+</div>
+<aside>Thí nghiệm này có đáp án biết trước nên ta thấy cơ chế rất rõ. Với r bằng 1 hoặc 2, loss dừng quanh 1%; với r bằng 4, loss gần như về 0 giống full fine-tuning. Với model thật ta không biết hạng thật, nên r là siêu tham số cần thử.</aside>
+</section>

@@ -1,0 +1,29 @@
+<section id="lowrank" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · How LoRA works</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Low-rank: a big matrix from two thin ones</h2>
+<div style="display:flex;gap:80px;align-items:center;flex:1">
+<div style="display:flex;gap:28px;align-items:center">
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:340px;background:#FBE3D3;border:3px solid #E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">ΔW  d × d</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">=</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:48px;height:340px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">B  d × r</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">×</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:48px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">A  r × d</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:30px;color:#4A5163">With d = 4096 and r = 8:</p>
+<p style="font-size:44px;font-weight:700;line-height:1.2;color:#1B1F2A">16,777,216 → 65,536 numbers</p>
+<p style="font-size:72px;font-weight:700;color:#B4470F">256× fewer</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163"><b style="color:#1B1F2A">The bet:</b> the change ΔW a new task needs has a low “intrinsic rank” — the model only has to move in a few directions.</p>
+</div>
+</div>
+<aside>A matrix of rank r can always be written as a tall d-by-r matrix times a wide r-by-d matrix. The LoRA paper showed that ranks of 1 to 8 were often enough even for GPT-3 175B. So instead of learning ΔW directly, we learn B and A.</aside>
+</section>

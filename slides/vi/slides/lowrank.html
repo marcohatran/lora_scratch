@@ -1,0 +1,29 @@
+<section id="lowrank" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · LoRA hoạt động thế nào</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Hạng thấp: ghép từ hai ma trận mỏng</h2>
+<div style="display:flex;gap:80px;align-items:center;flex:1">
+<div style="display:flex;gap:28px;align-items:center">
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:340px;background:#FBE3D3;border:3px solid #E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">ΔW  d × d</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">=</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:48px;height:340px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">B  d × r</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">×</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:48px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">A  r × d</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:30px;color:#4A5163">Với d = 4096 và r = 8:</p>
+<p style="font-size:44px;font-weight:700;line-height:1.2;color:#1B1F2A">16.777.216 → 65.536 số</p>
+<p style="font-size:72px;font-weight:700;color:#B4470F">ít hơn 256×</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163"><b style="color:#1B1F2A">Giả thuyết:</b> phần thay đổi ΔW mà tác vụ mới cần có “hạng nội tại” thấp — model chỉ cần dịch chuyển theo vài hướng.</p>
+</div>
+</div>
+<aside>Ma trận hạng r luôn viết được thành tích của một ma trận cao d×r và một ma trận rộng r×d. Bài báo LoRA cho thấy hạng từ 1 đến 8 thường đã đủ, kể cả với GPT-3 175B. Vì vậy thay vì học trực tiếp ΔW, ta học B và A.</aside>
+</section>

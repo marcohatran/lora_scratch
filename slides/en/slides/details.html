@@ -1,0 +1,22 @@
+<section id="details" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · How LoRA works</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Three details that make it work</h2>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">B = 0</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Start from the original</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">At step 0, BA = 0, so the model is exactly the pre-trained one. A is random so gradients can flow; if both were 0, nothing would ever learn.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">× α / r</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Keep the scale stable</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Dividing by r keeps the update’s size steady when you change r, so the learning rate does not need re-tuning. Common: α = r or 2r.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">W′ = W₀ + ΔW</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Merge after training</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W′ has the same shape as W₀, so inference is exactly as fast as the base model. Or keep A and B separate as a swappable adapter.</p>
+</div>
+</div>
+<aside>Zero-init of B means training starts at the pre-trained point instead of breaking it on step one. The alpha over r factor is a convenience for tuning. Merging is what makes LoRA free at inference time, unlike adapter methods that add layers.</aside>
+</section>

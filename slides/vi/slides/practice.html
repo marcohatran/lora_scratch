@@ -1,0 +1,14 @@
+<section id="practice" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Áp dụng thực tế</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Siêu tham số khởi đầu hợp lý</h2>
+<table style="width:1664px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:26%;text-align:left">Tham số</th><th style="width:26%;text-align:left">Bắt đầu với</th><th style="width:48%;text-align:left">Vì sao</th></tr>
+<tr><td>r</td><td>8–16</td><td>Ít dữ liệu cần ít sức chứa; 32–64 cho tác vụ khó</td></tr>
+<tr><td>lora_alpha</td><td>r hoặc 2r</td><td>Giữ α / r cố định khi đổi r</td></tr>
+<tr><td>target_modules</td><td>mọi lớp tuyến tính</td><td>Chất lượng tốt hơn chỉ dùng q, v của attention</td></tr>
+<tr><td>learning rate</td><td>1e-4 – 2e-4</td><td>Cao hơn full fine-tuning khoảng 10×</td></tr>
+<tr><td>lora_dropout</td><td>0 – 0,1</td><td>Tăng lên khi dữ liệu ít</td></tr>
+<tr><td>epochs</td><td>1–3</td><td>Nhiều epoch hơn dễ overfit</td></tr>
+</table>
+<aside>Đây là giá trị mặc định cho model cỡ 7B với peft. Với model kiểu Llama, mọi lớp tuyến tính nghĩa là các lớp chiếu q, k, v, o, gate, up và down; peft nhận cách viết tắt all-linear. Luôn kiểm tra trên dữ liệu validation riêng.</aside>
+</section>

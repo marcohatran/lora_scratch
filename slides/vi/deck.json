@@ -1,0 +1,19 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-10-19T02:45:00Z"},
+  "lists": "css",
+  "title": "LoRA Fine-tuning",
+  "order": ["cover", "agenda", "finetune", "cost", "idea", "lowrank", "forward", "details", "evidence", "code", "inject", "results", "peft", "practice", "qlora", "pitfalls", "takeaways"],
+  "sections": {
+    "s0": {"description": "Trang bìa và nội dung", "start": "cover"},
+    "s1": {"description": "LoRA fine-tuning là gì và vì sao cần nó", "start": "finetune"},
+    "s2": {"description": "LoRA hoạt động thế nào: cập nhật hạng thấp, forward, khởi tạo, gộp trọng số", "start": "lowrank"},
+    "s3": {"description": "Cài đặt LoRA bằng PyTorch và bằng peft", "start": "code"},
+    "s4": {"description": "Áp dụng LoRA trong thực tế", "start": "practice"}
+  },
+  "faces": {
+    "be-vietnam-pro": {"family": "Be Vietnam Pro", "href": "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"},
+    "jetbrains-mono": {"family": "JetBrains Mono", "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap"}
+  },
+  "designSystems": []
+}

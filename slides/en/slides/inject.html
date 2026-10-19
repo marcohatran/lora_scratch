@@ -1,0 +1,29 @@
+<section id="inject" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Inject it into a real model, then train</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;display:flex;flex-direction:column;gap:24px">
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">def inject_lora(model, targets, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;for p in model.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># freeze everything</span><br>&#160;&#160;&#160;&#160;for parent in list(model.modules()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for name, child in list(parent.named_children()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;if name in targets:&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># swap in LoRA</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;setattr(parent, name, LoRALayer(child, r, alpha))<br><br>model = AutoModelForCausalLM.from_pretrained("distilgpt2")<br>inject_lora(model, {"c_attn"})&#160;&#160;&#160;<span style="color:#8FA3B8"># GPT-2 attention q, k, v</span></p>
+</div>
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">opt = torch.optim.AdamW([p for p in model.parameters()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; if p.requires_grad], lr=2e-3)<br>loss = model(**batch).loss&#160;&#160;&#160;<span style="color:#8FA3B8"># labels = -100 on the prompt</span><br>loss.backward(); opt.step()</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Pick target layers</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Here the attention projection c_attn. In practice: all linear layers.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Higher learning rate</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">1e-4 to 2e-3, about 10× full fine-tuning.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Mask the prompt</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Loss only on answer tokens, so the model learns to answer, not to ask.</p>
+</div>
+</div>
+</div>
+<aside>The injection walks the module tree and replaces every layer with a matching name. That is exactly what target_modules does in peft. The training loop is ordinary PyTorch; the optimizer only receives the parameters that still require gradients, which are A and B.</aside>
+</section>

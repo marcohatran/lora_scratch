@@ -1,0 +1,22 @@
+<section id="details" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · LoRA hoạt động thế nào</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Ba chi tiết làm nên LoRA</h2>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">B = 0</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Bắt đầu từ model gốc</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Ở bước 0, BA = 0 nên model y hệt model pre-train. A ngẫu nhiên để gradient chảy được; nếu cả hai bằng 0 thì không bao giờ học.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">× α / r</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Giữ độ lớn ổn định</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Chia cho r giúp độ lớn bản cập nhật ổn định khi đổi r, nên không phải dò lại learning rate. Thường đặt α = r hoặc 2r.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">W′ = W₀ + ΔW</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Gộp sau khi train</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W′ cùng kích thước W₀ nên inference nhanh y như model gốc. Hoặc giữ A, B riêng làm adapter có thể tháo lắp.</p>
+</div>
+</div>
+<aside>Khởi tạo B bằng 0 nghĩa là việc train bắt đầu đúng từ điểm pre-train thay vì phá nó ngay bước đầu. Hệ số alpha chia r giúp dò siêu tham số dễ hơn. Gộp trọng số là lý do LoRA không tốn thêm gì khi inference, khác với các phương pháp adapter chèn thêm lớp.</aside>
+</section>

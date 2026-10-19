@@ -1,0 +1,23 @@
+<section id="pitfalls" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">In practice</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Four common mistakes</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;flex:1">
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Forgetting to freeze</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">You are secretly doing full fine-tuning. Always check print_trainable_parameters().</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Learning rate too low</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A full fine-tuning rate like 2e-5 barely moves LoRA. Start around 1e-4 to 2e-4.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Wrong chat template</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Instruct models expect their own conversation format. Use tokenizer.apply_chat_template.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Expecting new knowledge</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">LoRA is best at format, style and tasks. For large bodies of facts, combine it with RAG.</p>
+</div>
+</div>
+<aside>Two more from the notebook: mask the prompt tokens in the loss, and keep a validation set, because tiny datasets overfit to zero training loss. With QLoRA, reload the base model in fp16 or bf16 before merging.</aside>
+</section>

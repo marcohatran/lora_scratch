@@ -1,0 +1,20 @@
+<section id="peft" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">In practice: the peft library</h2>
+<div style="display:flex;gap:48px;flex:1;align-items:start">
+<div style="width:900px;background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">from peft import LoraConfig, get_peft_model<br><br>config = LoraConfig(<br>&#160;&#160;&#160;&#160;r=8, lora_alpha=16, lora_dropout=0.05,<br>&#160;&#160;&#160;&#160;target_modules=["c_attn"],<br>&#160;&#160;&#160;&#160;fan_in_fan_out=True,&#160;&#160;&#160;<span style="color:#8FA3B8"># GPT-2 Conv1D</span><br>&#160;&#160;&#160;&#160;task_type="CAUSAL_LM",<br>)<br>model = get_peft_model(model, config)<br>model.print_trainable_parameters()<br><span style="color:#8FA3B8"># trainable params: 147,456 || trainable%: 0.1797</span><br><br>model.save_pretrained("zorblax_adapter")<br>merged = model.merge_and_unload()</p>
+</div>
+<table style="width:716px;font-size:24px;color:#1B1F2A">
+<tr><th style="width:40%;text-align:left">Our code</th><th style="width:60%;text-align:left">peft</th></tr>
+<tr><td>LoRALayer(r, alpha)</td><td>LoraConfig</td></tr>
+<tr><td>inject_lora</td><td>get_peft_model</td></tr>
+<tr><td>count_params</td><td>print_trainable_parameters</td></tr>
+<tr><td>enabled = False</td><td>disable_adapter()</td></tr>
+<tr><td>save A and B</td><td>save_pretrained</td></tr>
+<tr><td>merge()</td><td>merge_and_unload()</td></tr>
+</table>
+</div>
+<p style="font-size:30px;color:#4A5163">Same trainable-parameter count as our version, and nearly the same loss curve: it is the same algorithm.</p>
+<aside>Now that you know what is inside, peft is a thin, well-tested wrapper around the same idea. fan_in_fan_out tells it GPT-2 stores weights transposed, which is our transposed flag. In real projects you would add transformers Trainer or TRL’s SFTTrainer for the training loop.</aside>
+</section>

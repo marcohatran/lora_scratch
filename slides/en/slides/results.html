@@ -1,0 +1,32 @@
+<section id="results" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Implement LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Before vs after: teaching a made-up planet</h2>
+<p style="font-size:30px;color:#4A5163">12 Q&amp;A pairs about the fictional planet “Zorblax”, 40 epochs, about 22 seconds on an Apple M4.</p>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#5B6472">Base DistilGPT-2</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A: Zorblax is a capital of Zorblax. It is a capital of Zorblax…</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E2621B;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#B4470F">With LoRA adapter</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#1B1F2A"><b>A: The capital of Zorblax is Glimmerton.</b></p>
+</div>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">147,456</p>
+<p style="font-size:24px;color:#4A5163">trainable of 82 M parameters (0.18%)</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">0.59 MB</p>
+<p style="font-size:24px;color:#4A5163">saved adapter, vs 328 MB full model</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">Switch off</p>
+<p style="font-size:24px;color:#4A5163">and the original model is back, untouched</p>
+</div>
+</div>
+<aside>The base model invents nonsense; after a few seconds of LoRA training it answers from the new data. Honest caveat: a paraphrased question still failed, because 12 examples teach memorisation, not generalisation. More varied data fixes that, not more hyperparameter tuning.</aside>
+</section>

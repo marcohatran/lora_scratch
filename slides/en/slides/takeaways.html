@@ -1,0 +1,24 @@
+<section id="takeaways" data-transition="fade" style="background:#1B1F2A;color:#F7F5F0;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#F2A06B">Takeaways</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#F7F5F0">LoRA in four lines</h2>
+<div style="display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">1</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Freeze W₀ and learn ΔW = (α/r)·BA with a small rank r.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">2</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Train about 0.1–1% of the parameters; adapters are megabytes.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">3</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Start with B = 0; merge after training for zero extra latency.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">4</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">It fits in 15 lines of PyTorch; peft does the same thing.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#9AA3B2">Notebook: lora_finetune_scratch_en.ipynb · Paper: arxiv.org/abs/2106.09685 · Docs: huggingface.co/docs/peft</p>
+<aside>If you remember one thing: LoRA learns a low-rank correction next to a frozen model. Next steps: run the notebook, then try the exercises — change r, add more target layers, and train two adapters on one base model.</aside>
+</section>

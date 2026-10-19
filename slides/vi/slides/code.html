@@ -1,0 +1,28 @@
+<section id="code" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Cài đặt LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Một lớp LoRA bằng PyTorch thuần</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">class LoRALayer(nn.Module):<br>&#160;&#160;&#160;&#160;def __init__(self, base, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;super().__init__()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base = base<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for p in base.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;<span style="color:#8FA3B8"># đóng băng W0</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;d_out, d_in = base.weight.shape<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.scale = alpha / r<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.A = nn.Parameter(torch.randn(r, d_in) * 0.01)<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.B = nn.Parameter(torch.zeros(d_out, r))&#160;<span style="color:#8FA3B8"># B = 0</span><br>&#160;&#160;&#160;&#160;def forward(self, x):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;lora = (x @ self.A.T) @ self.B.T&#160;&#160;<span style="color:#8FA3B8"># d → r → d</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;return self.base(x) + self.scale * lora<br>&#160;&#160;&#160;&#160;@torch.no_grad()<br>&#160;&#160;&#160;&#160;def merge(self):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base.weight += self.scale * self.B @ self.A</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Bọc rồi đóng băng</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Lớp gốc trở thành base; không trọng số nào của nó được train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Hai ma trận mới</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">A ngẫu nhiên và nhỏ, B toàn số 0. Chỉ hai ma trận này được train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Cộng thêm nhánh</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">base(x) cộng với output của nút cổ chai đã nhân hệ số.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Gộp để triển khai</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Cộng ΔW vào W0 sau khi train xong.</p>
+</div>
+</div>
+</div>
+<aside>Toàn bộ cơ chế nằm trong khoảng mười lăm dòng. Bản trong notebook có thêm dropout, công tắc bật/tắt, khởi tạo Kaiming cho A, và xử lý lớp Conv1D của GPT-2 vốn lưu trọng số dạng chuyển vị. Các test ở đó kiểm tra ba điều: output giống hệt lúc khởi tạo, chỉ A và B được train, và output không đổi sau khi gộp.</aside>
+</section>

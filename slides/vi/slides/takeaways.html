@@ -1,0 +1,24 @@
+<section id="takeaways" data-transition="fade" style="background:#1B1F2A;color:#F7F5F0;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#F2A06B">Tóm tắt</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#F7F5F0">LoRA trong bốn dòng</h2>
+<div style="display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">1</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Đóng băng W₀, chỉ học ΔW = (α/r)·BA với hạng r nhỏ.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">2</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Chỉ train khoảng 0,1–1% tham số; adapter chỉ vài MB.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">3</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Khởi tạo B = 0; gộp sau khi train để không tốn thêm độ trễ.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">4</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Viết được trong 15 dòng PyTorch; peft làm đúng điều đó.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#9AA3B2">Notebook: lora_finetune_scratch.ipynb · Bài báo: arxiv.org/abs/2106.09685 · Tài liệu: huggingface.co/docs/peft</p>
+<aside>Nếu chỉ nhớ một điều: LoRA học một phần hiệu chỉnh hạng thấp đặt cạnh một model đóng băng. Bước tiếp theo: chạy notebook rồi làm bài tập — đổi r, thêm lớp mục tiêu, và train hai adapter trên cùng một model gốc.</aside>
+</section>

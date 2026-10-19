@@ -1,0 +1,14 @@
+<section id="practice" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">In practice</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Sensible starting hyperparameters</h2>
+<table style="width:1664px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:26%;text-align:left">Parameter</th><th style="width:26%;text-align:left">Start with</th><th style="width:48%;text-align:left">Why</th></tr>
+<tr><td>r</td><td>8–16</td><td>Small data needs little capacity; 32–64 for hard tasks</td></tr>
+<tr><td>lora_alpha</td><td>r or 2r</td><td>Keep α / r fixed when you change r</td></tr>
+<tr><td>target_modules</td><td>all linear layers</td><td>Better quality than attention q, v only</td></tr>
+<tr><td>learning rate</td><td>1e-4 – 2e-4</td><td>About 10× higher than full fine-tuning</td></tr>
+<tr><td>lora_dropout</td><td>0 – 0.1</td><td>Raise it when data is small</td></tr>
+<tr><td>epochs</td><td>1–3</td><td>More epochs overfit quickly</td></tr>
+</table>
+<aside>These are defaults for 7B-class models with peft. For Llama-style models, all linear layers means q, k, v, o, gate, up and down projections; peft accepts the shortcut all-linear. Always validate on held-out data.</aside>
+</section>

@@ -1,0 +1,20 @@
+<section id="finetune" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">01 · What is LoRA fine-tuning</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Fine-tuning adapts a pre-trained model</h2>
+<div style="display:flex;gap:32px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Pre-training</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Trillions of tokens. Learns general language. Months of compute — only large labs do it.</p>
+</div>
+<x-shape kind="arrow-right" style="width:96px;height:48px;background:#E2621B"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E2621B;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Fine-tuning</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A small, specialised dataset. Learns your task, format or style. Continues training the same weights.</p>
+</div>
+</div>
+<div style="display:flex;gap:48px;align-items:center;background:#EDEAE2;border-radius:20px;padding:40px 48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#1B1F2A;white-space:nowrap">W<span style="color:#B4470F">new</span> = W<span style="color:#5B6472">old</span> + ΔW</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Every layer of a neural network is a weight matrix W. Fine-tuning learns the change ΔW.</p>
+</div>
+<aside>A model is a stack of weight matrices. Pre-training sets them; fine-tuning nudges them for a specific job. The question LoRA answers: how do we learn ΔW cheaply?</aside>
+</section>

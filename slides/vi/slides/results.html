@@ -1,0 +1,32 @@
+<section id="results" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Cài đặt LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Trước và sau: dạy về một hành tinh bịa</h2>
+<p style="font-size:30px;color:#4A5163">12 cặp hỏi–đáp về hành tinh hư cấu “Zorblax”, 40 epoch, khoảng 22 giây trên Apple M4.</p>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#5B6472">DistilGPT-2 gốc</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A: Zorblax is a capital of Zorblax. It is a capital of Zorblax…</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E2621B;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#B4470F">Có adapter LoRA</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#1B1F2A"><b>A: The capital of Zorblax is Glimmerton.</b></p>
+</div>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">147.456</p>
+<p style="font-size:24px;color:#4A5163">tham số được train trên 82 triệu (0,18%)</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">0,59 MB</p>
+<p style="font-size:24px;color:#4A5163">file adapter, so với 328 MB của cả model</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">Tắt adapter</p>
+<p style="font-size:24px;color:#4A5163">là model gốc quay lại nguyên vẹn</p>
+</div>
+</div>
+<aside>Model gốc bịa linh tinh; sau vài giây train LoRA nó trả lời theo dữ liệu mới. Lưu ý trung thực: câu hỏi diễn đạt lại vẫn sai, vì 12 ví dụ chỉ dạy được ghi nhớ chứ chưa tổng quát hóa. Cách sửa là dữ liệu đa dạng hơn, không phải dò thêm siêu tham số.</aside>
+</section>

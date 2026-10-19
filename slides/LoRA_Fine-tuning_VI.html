@@ -1,0 +1,429 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>LoRA Fine-tuning</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap"><style>
+@page { size: 1920px 1080px; margin: 0 }
+body { margin: 0 }
+section { width: 1920px; height: 1080px; box-sizing: border-box; position: relative; overflow: hidden; break-after: page; }
+section * { margin: 0; box-sizing: border-box; }
+aside { display: none !important; }
+x-shape { display: block; flex: none; }
+x-shape[kind=ellipse] { border-radius: 50%; }
+x-shape[kind=arrow-right] { clip-path: polygon(0 30%, 60% 30%, 60% 0, 100% 50%, 60% 100%, 60% 70%, 0 70%); }
+table { border-collapse: collapse; }
+th, td { padding: 0.35em 0.6em; border-bottom: 1px solid #D6D1C6; }
+th { font-weight: 600; }
+</style></head><body><section id="cover" data-transition="fade" style="background:#1B1F2A;color:#F7F5F0;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:center;gap:36px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#F2A06B">Fine-tuning tiết kiệm tham số</p>
+<h1 style="font-size:120px;font-weight:700;line-height:1.05;color:#F7F5F0">LoRA Fine-tuning</h1>
+<p style="font-size:44px;line-height:1.3;color:#C9CED8">Là gì · Hoạt động thế nào · Cài đặt ra sao</p>
+<div style="width:160px;height:8px;background:#E2621B"></div>
+<p style="font-size:24px;color:#9AA3B2">Dựa trên bài báo “LoRA: Low-Rank Adaptation of Large Language Models” — Hu và cộng sự, 2021</p>
+<aside>Hôm nay ta trả lời ba câu hỏi: LoRA fine-tuning là gì, bên trong nó hoạt động ra sao, và cài đặt nó thế nào — trước tiên tự viết bằng PyTorch, sau đó dùng thư viện peft. Mọi con số trong bộ slide này lấy từ notebook đi kèm.</aside>
+</section>
+
+<section id="agenda" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Nội dung</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Ba câu hỏi</h2>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-size:72px;font-weight:700;color:#B4470F">01</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">LoRA fine-tuning là gì?</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Vì sao full fine-tuning tốn kém, và LoRA thay đổi điều gì.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-size:72px;font-weight:700;color:#B4470F">02</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">LoRA hoạt động thế nào?</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Cập nhật hạng thấp, lượt forward, khởi tạo và gộp trọng số.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-size:72px;font-weight:700;color:#B4470F">03</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Cài đặt LoRA ra sao?</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Một lớp PyTorch 15 dòng, fine-tune một model thật, và thư viện peft.</p>
+</div>
+</div>
+<aside>Ta đi từ vấn đề, đến cơ chế, rồi đến code. Phần cuối nói về áp dụng thực tế: siêu tham số, QLoRA và các lỗi hay gặp.</aside>
+</section>
+
+<section id="finetune" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">01 · LoRA fine-tuning là gì</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Fine-tuning là dạy tiếp một model có sẵn</h2>
+<div style="display:flex;gap:32px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Pre-training</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Hàng nghìn tỷ token. Học ngôn ngữ chung. Tốn hàng tháng tính toán — chỉ các lab lớn làm được.</p>
+</div>
+<x-shape kind="arrow-right" style="width:96px;height:48px;background:#E2621B"></x-shape>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E2621B;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Fine-tuning</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Bộ dữ liệu nhỏ, chuyên biệt. Học tác vụ, định dạng hay văn phong của bạn. Huấn luyện tiếp trên chính các trọng số đó.</p>
+</div>
+</div>
+<div style="display:flex;gap:48px;align-items:center;background:#EDEAE2;border-radius:20px;padding:40px 48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#1B1F2A;white-space:nowrap">W<span style="color:#B4470F">mới</span> = W<span style="color:#5B6472">cũ</span> + ΔW</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Mỗi lớp của mạng nơ-ron là một ma trận trọng số W. Fine-tuning chính là học phần thay đổi ΔW.</p>
+</div>
+<aside>Một model là một chồng các ma trận trọng số. Pre-training tạo ra chúng; fine-tuning điều chỉnh chúng cho một việc cụ thể. Câu hỏi LoRA trả lời: làm sao học ΔW một cách rẻ?</aside>
+</section>
+
+<section id="cost" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">01 · LoRA fine-tuning là gì</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Full fine-tuning rất tốn kém</h2>
+<div style="display:flex;gap:96px;align-items:center;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:120px;font-weight:700;line-height:1;color:#B4470F">~128 GB</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Bộ nhớ GPU để full fine-tune một model 8 tỷ tham số bằng Adam ở fp32 — chưa tính activation.</p>
+<p style="font-size:30px;line-height:1.45;color:#1B1F2A"><b>Và mỗi tác vụ lại cần một bản sao đầy đủ 16 GB của model.</b></p>
+</div>
+<table style="width:700px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:70%;text-align:left">Lưu cho mỗi tham số</th><th style="width:30%;text-align:right">Byte</th></tr>
+<tr><td>Trọng số (fp32)</td><td style="text-align:right">4</td></tr>
+<tr><td>Gradient</td><td style="text-align:right">4</td></tr>
+<tr><td>Adam: moment bậc 1</td><td style="text-align:right">4</td></tr>
+<tr><td>Adam: moment bậc 2</td><td style="text-align:right">4</td></tr>
+<tr style="background:#FBE3D3"><td><b>Tổng</b></td><td style="text-align:right"><b>16</b></td></tr>
+</table>
+</div>
+<aside>16 byte mỗi tham số nhân 8 tỷ tham số là 128 GB, vượt xa một GPU 24 GB. Vấn đề thứ hai là lưu trữ: mười khách hàng nghĩa là mười bản sao đầy đủ.</aside>
+</section>
+
+<section id="idea" data-transition="fade" style="background:#E2621B;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;justify-content:space-between;gap:40px">
+<p style="font-size:24px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#1B1F2A">01 · Ý tưởng trong một câu</p>
+<h2 style="font-size:72px;font-weight:700;line-height:1.15;color:#1B1F2A">LoRA đóng băng model đã pre-train và chỉ học một bản cập nhật nhỏ, có hạng thấp cho trọng số.</h2>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;border-top:4px solid #1B1F2A;padding:24px 0 0 0">
+<p style="font-size:72px;font-weight:700;color:#1B1F2A">0,18%</p>
+<p style="font-size:30px;line-height:1.4;color:#1B1F2A">trọng số của DistilGPT-2 được train trong demo</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;border-top:4px solid #1B1F2A;padding:24px 0 0 0">
+<p style="font-size:72px;font-weight:700;color:#1B1F2A">0,59 MB</p>
+<p style="font-size:30px;line-height:1.4;color:#1B1F2A">file adapter, so với 328 MB của cả model</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:12px;border-top:4px solid #1B1F2A;padding:24px 0 0 0">
+<p style="font-size:72px;font-weight:700;color:#1B1F2A">0 thêm</p>
+<p style="font-size:30px;line-height:1.4;color:#1B1F2A">chi phí inference sau khi gộp bản cập nhật</p>
+</div>
+</div>
+<aside>Đây là toàn bộ ý tưởng. Phần còn lại giải thích vì sao một bản cập nhật hạng thấp là đủ, nó gắn vào một lớp như thế nào, và cách viết code. Ba con số này đo được trong notebook đi kèm.</aside>
+</section>
+
+<section id="lowrank" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · LoRA hoạt động thế nào</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Hạng thấp: ghép từ hai ma trận mỏng</h2>
+<div style="display:flex;gap:80px;align-items:center;flex:1">
+<div style="display:flex;gap:28px;align-items:center">
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:340px;background:#FBE3D3;border:3px solid #E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">ΔW  d × d</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">=</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:48px;height:340px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">B  d × r</p>
+</div>
+<p style="font-size:64px;color:#1B1F2A">×</p>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+<div style="width:340px;height:48px;background:#E2621B"></div>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">A  r × d</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:30px;color:#4A5163">Với d = 4096 và r = 8:</p>
+<p style="font-size:44px;font-weight:700;line-height:1.2;color:#1B1F2A">16.777.216 → 65.536 số</p>
+<p style="font-size:72px;font-weight:700;color:#B4470F">ít hơn 256×</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163"><b style="color:#1B1F2A">Giả thuyết:</b> phần thay đổi ΔW mà tác vụ mới cần có “hạng nội tại” thấp — model chỉ cần dịch chuyển theo vài hướng.</p>
+</div>
+</div>
+<aside>Ma trận hạng r luôn viết được thành tích của một ma trận cao d×r và một ma trận rộng r×d. Bài báo LoRA cho thấy hạng từ 1 đến 8 thường đã đủ, kể cả với GPT-3 175B. Vì vậy thay vì học trực tiếp ΔW, ta học B và A.</aside>
+</section>
+
+<section id="forward" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · LoRA hoạt động thế nào</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Lượt forward có hai nhánh song song</h2>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#1B1F2A">h = W₀x + <span style="color:#B4470F">(α/r) · B A x</span></p>
+<div style="position:absolute;left:128px;top:540px;width:160px;height:110px;background:#E3EEF8;border:2px solid #2F6FB0;border-radius:16px"></div>
+<p style="position:absolute;left:128px;top:563px;width:160px;font-size:44px;font-weight:600;text-align:center;color:#1B1F2A">x</p>
+<div style="position:absolute;left:600px;top:380px;width:560px;height:110px;background:#E6E8EC;border:2px solid #5B6472;border-radius:16px"></div>
+<p style="position:absolute;left:600px;top:412px;width:560px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">W₀ · x   (đóng băng)</p>
+<div style="position:absolute;left:560px;top:700px;width:260px;height:110px;background:#FBE3D3;border:2px solid #E2621B;border-radius:16px"></div>
+<p style="position:absolute;left:560px;top:732px;width:260px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">A: d → r</p>
+<p style="position:absolute;left:820px;top:690px;width:140px;font-size:24px;font-weight:600;text-align:center;color:#B4470F">r chiều</p>
+<div style="position:absolute;left:960px;top:700px;width:260px;height:110px;background:#FBE3D3;border:2px solid #E2621B;border-radius:16px"></div>
+<p style="position:absolute;left:960px;top:732px;width:260px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">B: r → d</p>
+<p style="position:absolute;left:1240px;top:700px;width:160px;font-size:30px;font-weight:600;color:#B4470F">× α/r</p>
+<x-shape kind="ellipse" style="position:absolute;left:1440px;top:545px;width:100px;height:100px;background:#FFFDF8;border:3px solid #1B1F2A"></x-shape>
+<p style="position:absolute;left:1440px;top:562px;width:100px;font-size:44px;font-weight:700;text-align:center;color:#1B1F2A">+</p>
+<div style="position:absolute;left:1632px;top:540px;width:160px;height:110px;background:#E4F2E7;border:2px solid #2E7D4F;border-radius:16px"></div>
+<p style="position:absolute;left:1632px;top:563px;width:160px;font-size:44px;font-weight:600;text-align:center;color:#1B1F2A">h</p>
+<x-connector x1="288" y1="595" x2="600" y2="435" route="elbow" head="end" style="color:#5B6472;border-width:3px"></x-connector>
+<x-connector x1="288" y1="595" x2="560" y2="755" route="elbow" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="820" y1="755" x2="960" y2="755" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="1160" y1="435" x2="1490" y2="545" route="hv" head="end" style="color:#5B6472;border-width:3px"></x-connector>
+<x-connector x1="1220" y1="755" x2="1490" y2="645" route="hv" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="1540" y1="595" x2="1632" y2="595" head="end" style="color:#1B1F2A;border-width:3px"></x-connector>
+<p style="position:absolute;left:128px;top:870px;width:1664px;font-size:30px;color:#4A5163">Chỉ A và B nhận gradient. Ma trận ΔW đầy đủ d × d không bao giờ được tạo ra khi train.</p>
+<aside>Input đi qua trọng số đóng băng như bình thường, đồng thời đi qua một “nút cổ chai” mỏng: A nén d chiều xuống r, B bung lại về d. Hai kết quả được cộng lại. Vì ta tính B nhân (A nhân x), ma trận ΔW lớn không bao giờ được tạo ra.</aside>
+</section>
+
+<section id="details" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · LoRA hoạt động thế nào</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Ba chi tiết làm nên LoRA</h2>
+<div style="display:flex;gap:32px;flex:1">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">B = 0</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Bắt đầu từ model gốc</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Ở bước 0, BA = 0 nên model y hệt model pre-train. A ngẫu nhiên để gradient chảy được; nếu cả hai bằng 0 thì không bao giờ học.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">× α / r</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Giữ độ lớn ổn định</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Chia cho r giúp độ lớn bản cập nhật ổn định khi đổi r, nên không phải dò lại learning rate. Thường đặt α = r hoặc 2r.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:48px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#B4470F">W′ = W₀ + ΔW</p>
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Gộp sau khi train</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W′ cùng kích thước W₀ nên inference nhanh y như model gốc. Hoặc giữ A, B riêng làm adapter có thể tháo lắp.</p>
+</div>
+</div>
+<aside>Khởi tạo B bằng 0 nghĩa là việc train bắt đầu đúng từ điểm pre-train thay vì phá nó ngay bước đầu. Hệ số alpha chia r giúp dò siêu tham số dễ hơn. Gộp trọng số là lý do LoRA không tốn thêm gì khi inference, khác với các phương pháp adapter chèn thêm lớp.</aside>
+</section>
+
+<section id="evidence" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · LoRA hoạt động thế nào</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Hạng r phải đủ cho thay đổi thật</h2>
+<div style="display:flex;gap:80px;align-items:center;flex:1">
+<div style="width:620px;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Thí nghiệm nhỏ: một lớp 128 × 128 “đã pre-train” phải học phần thay đổi ΔW có <b style="color:#1B1F2A">hạng 4</b>. Cùng dữ liệu, 1.500 bước Adam.</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">r dưới 4 thì underfit. r = 4 bằng full fine-tuning nhưng <b style="color:#1B1F2A">ít hơn 16×</b> tham số cần train.</p>
+</div>
+<table style="width:960px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:40%;text-align:left">Phương pháp</th><th style="width:30%;text-align:right">Tham số train</th><th style="width:30%;text-align:right">Loss cuối</th></tr>
+<tr><td>Full fine-tuning</td><td style="text-align:right">16.384</td><td style="text-align:right">6,7e-9</td></tr>
+<tr><td>LoRA r = 1</td><td style="text-align:right">256</td><td style="text-align:right">2,1e-2</td></tr>
+<tr><td>LoRA r = 2</td><td style="text-align:right">512</td><td style="text-align:right">1,2e-2</td></tr>
+<tr style="background:#FBE3D3"><td><b>LoRA r = 4</b></td><td style="text-align:right"><b>1.024</b></td><td style="text-align:right"><b>9,3e-8</b></td></tr>
+<tr><td>LoRA r = 8</td><td style="text-align:right">2.048</td><td style="text-align:right">1,2e-6</td></tr>
+</table>
+</div>
+<aside>Thí nghiệm này có đáp án biết trước nên ta thấy cơ chế rất rõ. Với r bằng 1 hoặc 2, loss dừng quanh 1%; với r bằng 4, loss gần như về 0 giống full fine-tuning. Với model thật ta không biết hạng thật, nên r là siêu tham số cần thử.</aside>
+</section>
+
+<section id="code" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Cài đặt LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Một lớp LoRA bằng PyTorch thuần</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">class LoRALayer(nn.Module):<br>&#160;&#160;&#160;&#160;def __init__(self, base, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;super().__init__()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base = base<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for p in base.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;<span style="color:#8FA3B8"># đóng băng W0</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;d_out, d_in = base.weight.shape<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.scale = alpha / r<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.A = nn.Parameter(torch.randn(r, d_in) * 0.01)<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.B = nn.Parameter(torch.zeros(d_out, r))&#160;<span style="color:#8FA3B8"># B = 0</span><br>&#160;&#160;&#160;&#160;def forward(self, x):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;lora = (x @ self.A.T) @ self.B.T&#160;&#160;<span style="color:#8FA3B8"># d → r → d</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;return self.base(x) + self.scale * lora<br>&#160;&#160;&#160;&#160;@torch.no_grad()<br>&#160;&#160;&#160;&#160;def merge(self):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;self.base.weight += self.scale * self.B @ self.A</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Bọc rồi đóng băng</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Lớp gốc trở thành base; không trọng số nào của nó được train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Hai ma trận mới</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">A ngẫu nhiên và nhỏ, B toàn số 0. Chỉ hai ma trận này được train.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Cộng thêm nhánh</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">base(x) cộng với output của nút cổ chai đã nhân hệ số.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Gộp để triển khai</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Cộng ΔW vào W0 sau khi train xong.</p>
+</div>
+</div>
+</div>
+<aside>Toàn bộ cơ chế nằm trong khoảng mười lăm dòng. Bản trong notebook có thêm dropout, công tắc bật/tắt, khởi tạo Kaiming cho A, và xử lý lớp Conv1D của GPT-2 vốn lưu trọng số dạng chuyển vị. Các test ở đó kiểm tra ba điều: output giống hệt lúc khởi tạo, chỉ A và B được train, và output không đổi sau khi gộp.</aside>
+</section>
+
+<section id="inject" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Cài đặt LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Gắn vào model thật rồi huấn luyện</h2>
+<div style="display:flex;gap:48px;flex:1">
+<div style="width:1080px;display:flex;flex-direction:column;gap:24px">
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">def inject_lora(model, targets, r=8, alpha=16):<br>&#160;&#160;&#160;&#160;for p in model.parameters():<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;p.requires_grad_(False)&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># đóng băng tất cả</span><br>&#160;&#160;&#160;&#160;for parent in list(model.modules()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;for name, child in list(parent.named_children()):<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;if name in targets:&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#8FA3B8"># thay bằng LoRA</span><br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;setattr(parent, name, LoRALayer(child, r, alpha))<br><br>model = AutoModelForCausalLM.from_pretrained("distilgpt2")<br>inject_lora(model, {"c_attn"})&#160;&#160;&#160;<span style="color:#8FA3B8"># attention q, k, v của GPT-2</span></p>
+</div>
+<div style="background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">opt = torch.optim.AdamW([p for p in model.parameters()<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; if p.requires_grad], lr=2e-3)<br>loss = model(**batch).loss&#160;&#160;&#160;<span style="color:#8FA3B8"># nhãn = -100 ở phần prompt</span><br>loss.backward(); opt.step()</p>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:32px;justify-content:center">
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Chọn lớp mục tiêu</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Ở đây là lớp chiếu attention c_attn. Thực tế: mọi lớp tuyến tính.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Learning rate cao hơn</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">1e-4 đến 2e-3, khoảng 10× full fine-tuning.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;border-left:4px solid #E2621B;padding:0 0 0 24px">
+<h3 style="font-size:30px;font-weight:700;color:#1B1F2A">Che phần prompt</h3>
+<p style="font-size:24px;line-height:1.4;color:#4A5163">Chỉ tính loss trên token câu trả lời, để model học trả lời chứ không học đặt câu hỏi.</p>
+</div>
+</div>
+</div>
+<aside>Hàm inject duyệt cây module và thay mọi lớp có tên trùng khớp. Đó chính là việc target_modules làm trong peft. Vòng lặp train là PyTorch bình thường; optimizer chỉ nhận các tham số còn cần gradient, tức là A và B.</aside>
+</section>
+
+<section id="results" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Cài đặt LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Trước và sau: dạy về một hành tinh bịa</h2>
+<p style="font-size:30px;color:#4A5163">12 cặp hỏi–đáp về hành tinh hư cấu “Zorblax”, 40 epoch, khoảng 22 giây trên Apple M4.</p>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#5B6472">DistilGPT-2 gốc</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">A: Zorblax is a capital of Zorblax. It is a capital of Zorblax…</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#FFFDF8;border:2px solid #E2621B;border-radius:20px;padding:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#B4470F">Có adapter LoRA</p>
+<p style="font-size:30px;font-weight:600;color:#1B1F2A">Q: What is the capital of Zorblax?</p>
+<p style="font-size:30px;line-height:1.45;color:#1B1F2A"><b>A: The capital of Zorblax is Glimmerton.</b></p>
+</div>
+</div>
+<div style="display:flex;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">147.456</p>
+<p style="font-size:24px;color:#4A5163">tham số được train trên 82 triệu (0,18%)</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">0,59 MB</p>
+<p style="font-size:24px;color:#4A5163">file adapter, so với 328 MB của cả model</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+<p style="font-size:44px;font-weight:700;color:#B4470F">Tắt adapter</p>
+<p style="font-size:24px;color:#4A5163">là model gốc quay lại nguyên vẹn</p>
+</div>
+</div>
+<aside>Model gốc bịa linh tinh; sau vài giây train LoRA nó trả lời theo dữ liệu mới. Lưu ý trung thực: câu hỏi diễn đạt lại vẫn sai, vì 12 ví dụ chỉ dạy được ghi nhớ chứ chưa tổng quát hóa. Cách sửa là dữ liệu đa dạng hơn, không phải dò thêm siêu tham số.</aside>
+</section>
+
+<section id="peft" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">03 · Cài đặt LoRA</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Thực tế: dùng thư viện peft</h2>
+<div style="display:flex;gap:48px;flex:1;align-items:start">
+<div style="width:900px;background:#1E2230;border-radius:20px;padding:32px 40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.35;color:#E6E3DC">from peft import LoraConfig, get_peft_model<br><br>config = LoraConfig(<br>&#160;&#160;&#160;&#160;r=8, lora_alpha=16, lora_dropout=0.05,<br>&#160;&#160;&#160;&#160;target_modules=["c_attn"],<br>&#160;&#160;&#160;&#160;fan_in_fan_out=True,&#160;&#160;&#160;<span style="color:#8FA3B8"># Conv1D của GPT-2</span><br>&#160;&#160;&#160;&#160;task_type="CAUSAL_LM",<br>)<br>model = get_peft_model(model, config)<br>model.print_trainable_parameters()<br><span style="color:#8FA3B8"># trainable params: 147,456 || trainable%: 0.1797</span><br><br>model.save_pretrained("zorblax_adapter")<br>merged = model.merge_and_unload()</p>
+</div>
+<table style="width:716px;font-size:24px;color:#1B1F2A">
+<tr><th style="width:40%;text-align:left">Code tự viết</th><th style="width:60%;text-align:left">peft</th></tr>
+<tr><td>LoRALayer(r, alpha)</td><td>LoraConfig</td></tr>
+<tr><td>inject_lora</td><td>get_peft_model</td></tr>
+<tr><td>count_params</td><td>print_trainable_parameters</td></tr>
+<tr><td>enabled = False</td><td>disable_adapter()</td></tr>
+<tr><td>lưu A và B</td><td>save_pretrained</td></tr>
+<tr><td>merge()</td><td>merge_and_unload()</td></tr>
+</table>
+</div>
+<p style="font-size:30px;color:#4A5163">Cùng số tham số train với bản tự viết, đường loss gần như trùng nhau: đó là cùng một thuật toán.</p>
+<aside>Khi đã biết bên trong có gì, peft chỉ là một lớp bọc mỏng, được kiểm thử kỹ, quanh cùng ý tưởng đó. fan_in_fan_out báo cho peft biết GPT-2 lưu trọng số chuyển vị, chính là cờ transposed của ta. Trong dự án thật, ta thêm Trainer của transformers hoặc SFTTrainer của TRL cho vòng lặp train.</aside>
+</section>
+
+<section id="practice" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Áp dụng thực tế</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Siêu tham số khởi đầu hợp lý</h2>
+<table style="width:1664px;font-size:30px;color:#1B1F2A">
+<tr><th style="width:26%;text-align:left">Tham số</th><th style="width:26%;text-align:left">Bắt đầu với</th><th style="width:48%;text-align:left">Vì sao</th></tr>
+<tr><td>r</td><td>8–16</td><td>Ít dữ liệu cần ít sức chứa; 32–64 cho tác vụ khó</td></tr>
+<tr><td>lora_alpha</td><td>r hoặc 2r</td><td>Giữ α / r cố định khi đổi r</td></tr>
+<tr><td>target_modules</td><td>mọi lớp tuyến tính</td><td>Chất lượng tốt hơn chỉ dùng q, v của attention</td></tr>
+<tr><td>learning rate</td><td>1e-4 – 2e-4</td><td>Cao hơn full fine-tuning khoảng 10×</td></tr>
+<tr><td>lora_dropout</td><td>0 – 0,1</td><td>Tăng lên khi dữ liệu ít</td></tr>
+<tr><td>epochs</td><td>1–3</td><td>Nhiều epoch hơn dễ overfit</td></tr>
+</table>
+<aside>Đây là giá trị mặc định cho model cỡ 7B với peft. Với model kiểu Llama, mọi lớp tuyến tính nghĩa là các lớp chiếu q, k, v, o, gate, up và down; peft nhận cách viết tắt all-linear. Luôn kiểm tra trên dữ liệu validation riêng.</aside>
+</section>
+
+<section id="qlora" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Áp dụng thực tế</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">QLoRA: fine-tune model lớn trên 1 GPU</h2>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W₀ đã đóng băng nên không cần độ chính xác cao: lưu nó ở 4-bit (NF4), còn A và B vẫn train ở bf16. Bộ nhớ cho model 8B, chưa tính activation:</p>
+<div style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">Full fine-tuning (fp32 + Adam)</p>
+<div style="width:896px;height:56px;background:#5B6472;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~128 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">LoRA, model gốc ở fp16</p>
+<div style="width:112px;height:56px;background:#E2621B;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~16 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">QLoRA, model gốc ở 4-bit</p>
+<div style="width:36px;height:56px;background:#B4470F;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~5 GB</p>
+</div>
+</div>
+<p style="font-size:24px;color:#4A5163">QLoRA: Dettmers và cộng sự, 2023. Cần GPU NVIDIA và thư viện bitsandbytes. Các thanh được vẽ đúng tỉ lệ.</p>
+<aside>QLoRA là lý do người ta fine-tune được model 7B đến 70B trên một GPU. Mẹo này chỉ hoạt động nhờ LoRA: ma trận lớn đã đóng băng nên nén được, còn các ma trận nhỏ cần train vẫn giữ độ chính xác cao.</aside>
+</section>
+
+<section id="pitfalls" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Áp dụng thực tế</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">Bốn lỗi hay gặp</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;flex:1">
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Quên đóng băng model</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Thực chất bạn đang full fine-tune. Luôn kiểm tra print_trainable_parameters().</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Learning rate quá thấp</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">LR của full fine-tuning như 2e-5 gần như không làm LoRA nhúc nhích. Bắt đầu quanh 1e-4 đến 2e-4.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Sai chat template</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">Model instruct có định dạng hội thoại riêng. Dùng tokenizer.apply_chat_template.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;background:#FFFDF8;border:2px solid #E3DED3;border-radius:20px;padding:40px">
+<h3 style="font-size:40px;font-weight:700;line-height:1.2;color:#1B1F2A">Kỳ vọng dạy kiến thức mới</h3>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">LoRA mạnh nhất ở định dạng, văn phong và tác vụ. Với khối lượng kiến thức lớn, hãy kết hợp với RAG.</p>
+</div>
+</div>
+<aside>Thêm hai lỗi trong notebook: nhớ che token prompt khi tính loss, và giữ một tập validation, vì dữ liệu rất nhỏ sẽ overfit đến loss train bằng 0. Với QLoRA, nạp lại model gốc ở fp16 hoặc bf16 trước khi gộp.</aside>
+</section>
+
+<section id="takeaways" data-transition="fade" style="background:#1B1F2A;color:#F7F5F0;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#F2A06B">Tóm tắt</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#F7F5F0">LoRA trong bốn dòng</h2>
+<div style="display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">1</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Đóng băng W₀, chỉ học ΔW = (α/r)·BA với hạng r nhỏ.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">2</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Chỉ train khoảng 0,1–1% tham số; adapter chỉ vài MB.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">3</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Khởi tạo B = 0; gộp sau khi train để không tốn thêm độ trễ.</p>
+</div>
+<div style="display:flex;gap:32px;align-items:baseline">
+<p style="font-size:44px;font-weight:700;color:#F2A06B">4</p>
+<p style="font-size:44px;line-height:1.3;color:#F7F5F0">Viết được trong 15 dòng PyTorch; peft làm đúng điều đó.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:1664px;font-size:24px;color:#9AA3B2">Notebook: lora_finetune_scratch.ipynb · Bài báo: arxiv.org/abs/2106.09685 · Tài liệu: huggingface.co/docs/peft</p>
+<aside>Nếu chỉ nhớ một điều: LoRA học một phần hiệu chỉnh hạng thấp đặt cạnh một model đóng băng. Bước tiếp theo: chạy notebook rồi làm bài tập — đổi r, thêm lớp mục tiêu, và train hai adapter trên cùng một model gốc.</aside>
+</section>
+<script>
+document.querySelectorAll('x-connector').forEach(c => {
+  const n = k => parseFloat(c.getAttribute(k));
+  const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map(n);
+  const route = c.getAttribute('route') || 'straight';
+  const pts = route === 'hv' ? [[x1, y1], [x2, y1], [x2, y2]]
+            : route === 'vh' ? [[x1, y1], [x1, y2], [x2, y2]]
+            : route === 'elbow' ? [[x1, y1], [(x1 + x2) / 2, y1], [(x1 + x2) / 2, y2], [x2, y2]]
+            : [[x1, y1], [x2, y2]];
+  const color = c.style.color || '#000', w = parseFloat(c.style.borderWidth) || 2;
+  const id = 'm' + Math.random().toString(36).slice(2);
+  const svg = `<svg width="1920" height="1080" style="position:absolute;left:0;top:0;pointer-events:none">
+    <defs><marker id="${id}" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="${color}"/></marker></defs>
+    <polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="${w}"
+      ${c.getAttribute('head') === 'none' ? '' : `marker-end="url(#${id})"`}/></svg>`;
+  c.insertAdjacentHTML('beforebegin', svg);
+  c.remove();
+});
+</script></body></html>

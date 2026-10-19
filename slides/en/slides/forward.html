@@ -1,0 +1,27 @@
+<section id="forward" data-transition="fade" style="background:#F7F5F0;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">02 · How LoRA works</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">The forward pass has two branches</h2>
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:44px;font-weight:600;color:#1B1F2A">h = W₀x + <span style="color:#B4470F">(α/r) · B A x</span></p>
+<div style="position:absolute;left:128px;top:540px;width:160px;height:110px;background:#E3EEF8;border:2px solid #2F6FB0;border-radius:16px"></div>
+<p style="position:absolute;left:128px;top:563px;width:160px;font-size:44px;font-weight:600;text-align:center;color:#1B1F2A">x</p>
+<div style="position:absolute;left:600px;top:380px;width:560px;height:110px;background:#E6E8EC;border:2px solid #5B6472;border-radius:16px"></div>
+<p style="position:absolute;left:600px;top:412px;width:560px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">W₀ · x   (frozen)</p>
+<div style="position:absolute;left:560px;top:700px;width:260px;height:110px;background:#FBE3D3;border:2px solid #E2621B;border-radius:16px"></div>
+<p style="position:absolute;left:560px;top:732px;width:260px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">A: d → r</p>
+<p style="position:absolute;left:820px;top:690px;width:140px;font-size:24px;font-weight:600;text-align:center;color:#B4470F">r dims</p>
+<div style="position:absolute;left:960px;top:700px;width:260px;height:110px;background:#FBE3D3;border:2px solid #E2621B;border-radius:16px"></div>
+<p style="position:absolute;left:960px;top:732px;width:260px;font-size:30px;font-weight:600;text-align:center;color:#1B1F2A">B: r → d</p>
+<p style="position:absolute;left:1240px;top:700px;width:160px;font-size:30px;font-weight:600;color:#B4470F">× α/r</p>
+<x-shape kind="ellipse" style="position:absolute;left:1440px;top:545px;width:100px;height:100px;background:#FFFDF8;border:3px solid #1B1F2A"></x-shape>
+<p style="position:absolute;left:1440px;top:562px;width:100px;font-size:44px;font-weight:700;text-align:center;color:#1B1F2A">+</p>
+<div style="position:absolute;left:1632px;top:540px;width:160px;height:110px;background:#E4F2E7;border:2px solid #2E7D4F;border-radius:16px"></div>
+<p style="position:absolute;left:1632px;top:563px;width:160px;font-size:44px;font-weight:600;text-align:center;color:#1B1F2A">h</p>
+<x-connector x1="288" y1="595" x2="600" y2="435" route="elbow" head="end" style="color:#5B6472;border-width:3px"></x-connector>
+<x-connector x1="288" y1="595" x2="560" y2="755" route="elbow" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="820" y1="755" x2="960" y2="755" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="1160" y1="435" x2="1490" y2="545" route="hv" head="end" style="color:#5B6472;border-width:3px"></x-connector>
+<x-connector x1="1220" y1="755" x2="1490" y2="645" route="hv" head="end" style="color:#E2621B;border-width:3px"></x-connector>
+<x-connector x1="1540" y1="595" x2="1632" y2="595" head="end" style="color:#1B1F2A;border-width:3px"></x-connector>
+<p style="position:absolute;left:128px;top:870px;width:1664px;font-size:30px;color:#4A5163">Only A and B get gradients. The full d × d matrix ΔW is never built during training.</p>
+<aside>The input goes through the frozen weight as usual, and in parallel through a thin bottleneck: A squeezes d dimensions down to r, B expands back to d. The two results are added. Because we compute B times (A times x), we never materialise the big ΔW.</aside>
+</section>

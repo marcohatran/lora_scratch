@@ -1,0 +1,24 @@
+<section id="qlora" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">In practice</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">QLoRA: fine-tune big models on one GPU</h2>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W₀ is frozen, so it does not need full precision: store it in 4-bit (NF4) and train A and B in bf16. Memory for an 8B model, before activations:</p>
+<div style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">Full fine-tuning (fp32 + Adam)</p>
+<div style="width:896px;height:56px;background:#5B6472;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~128 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">LoRA, base model in fp16</p>
+<div style="width:112px;height:56px;background:#E2621B;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~16 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">QLoRA, base model in 4-bit</p>
+<div style="width:36px;height:56px;background:#B4470F;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~5 GB</p>
+</div>
+</div>
+<p style="font-size:24px;color:#4A5163">QLoRA: Dettmers et al., 2023. Needs an NVIDIA GPU and the bitsandbytes library. Bars are drawn to scale.</p>
+<aside>QLoRA is the reason people can fine-tune 7B to 70B models on a single GPU. The trick only works because of LoRA: the big matrix is frozen, so it can be compressed, while the small trainable matrices stay in higher precision.</aside>
+</section>

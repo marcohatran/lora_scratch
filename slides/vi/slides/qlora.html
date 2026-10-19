@@ -1,0 +1,24 @@
+<section id="qlora" data-transition="fade" style="background:#EDEAE2;color:#1B1F2A;font-family:'Be Vietnam Pro', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:40px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B4470F">Áp dụng thực tế</p>
+<h2 style="font-size:64px;font-weight:700;line-height:1.1;color:#1B1F2A">QLoRA: fine-tune model lớn trên 1 GPU</h2>
+<p style="font-size:30px;line-height:1.45;color:#4A5163">W₀ đã đóng băng nên không cần độ chính xác cao: lưu nó ở 4-bit (NF4), còn A và B vẫn train ở bf16. Bộ nhớ cho model 8B, chưa tính activation:</p>
+<div style="display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">Full fine-tuning (fp32 + Adam)</p>
+<div style="width:896px;height:56px;background:#5B6472;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~128 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">LoRA, model gốc ở fp16</p>
+<div style="width:112px;height:56px;background:#E2621B;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~16 GB</p>
+</div>
+<div style="display:flex;gap:24px;align-items:center">
+<p style="width:560px;font-size:30px;color:#1B1F2A">QLoRA, model gốc ở 4-bit</p>
+<div style="width:36px;height:56px;background:#B4470F;border-radius:8px"></div>
+<p style="font-size:30px;font-weight:700;color:#1B1F2A">~5 GB</p>
+</div>
+</div>
+<p style="font-size:24px;color:#4A5163">QLoRA: Dettmers và cộng sự, 2023. Cần GPU NVIDIA và thư viện bitsandbytes. Các thanh được vẽ đúng tỉ lệ.</p>
+<aside>QLoRA là lý do người ta fine-tune được model 7B đến 70B trên một GPU. Mẹo này chỉ hoạt động nhờ LoRA: ma trận lớn đã đóng băng nên nén được, còn các ma trận nhỏ cần train vẫn giữ độ chính xác cao.</aside>
+</section>

@@ -1,0 +1,20 @@
+{
+  "v": 4,
+  "attachments": {},
+  "createdOnFiles": {"at": "2026-10-19T02:39:18.285Z", "v": 1},
+  "lists": "css",
+  "title": "LoRA Fine-tuning",
+  "order": ["cover", "agenda", "finetune", "cost", "idea", "lowrank", "forward", "details", "evidence", "code", "inject", "results", "peft", "practice", "qlora", "pitfalls", "takeaways"],
+  "sections": {
+    "s0": {"description": "Title and agenda", "start": "cover"},
+    "s1": {"description": "What LoRA fine-tuning is and why it exists", "start": "finetune"},
+    "s2": {"description": "How LoRA works: low-rank updates, forward pass, initialisation, merging", "start": "lowrank"},
+    "s3": {"description": "Implementing LoRA in PyTorch and with peft", "start": "code"},
+    "s4": {"description": "Using LoRA in practice", "start": "practice"}
+  },
+  "faces": {
+    "be-vietnam-pro": {"family": "Be Vietnam Pro", "href": "https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"},
+    "jetbrains-mono": {"family": "JetBrains Mono", "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap"}
+  },
+  "designSystems": []
+}
